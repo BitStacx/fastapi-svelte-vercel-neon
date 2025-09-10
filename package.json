@@ -1,8 +1,0 @@
-{
-  "name": "fastapi-svelte-vercel-neon",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "build": "cd svelte && npm install && npm run build"
-  }
-}

@@ -38,7 +38,12 @@ if os.getenv("DEBUG") and StaticFiles is not None:  # Only mount static files wh
 
 # For serverless, we need to load manifest lazily
 def get_manifest():
-    manifest_path = pathlib.Path("svelte/dist/.vite/manifest.json")
+    # Check if running on Vercel and use public manifest
+    if os.getenv("VERCEL") == "1":
+        manifest_path = pathlib.Path("public/manifest.json")
+    else:
+        manifest_path = pathlib.Path("svelte/dist/.vite/manifest.json")
+    
     if manifest_path.exists():
         with open(manifest_path) as f:
             return json.load(f)
@@ -117,6 +122,23 @@ async def init_data(db: AsyncSession = Depends(get_session)):
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to initialize data: {str(e)}")
+
+@app.get("/assets/{filename:path}")
+async def serve_assets(filename: str):
+    """Serve static assets directly"""
+    from fastapi.responses import FileResponse
+    import os
+    
+    # Try to serve from public directory first (Vercel), then svelte/dist (local)
+    if os.getenv("VERCEL") == "1":
+        file_path = pathlib.Path(f"public/assets/{filename}")
+    else:
+        file_path = pathlib.Path(f"svelte/dist/assets/{filename}")
+    
+    if file_path.exists():
+        return FileResponse(file_path)
+    else:
+        raise HTTPException(status_code=404, detail="Asset not found")
 
 @app.get("/health")
 async def health_check():
