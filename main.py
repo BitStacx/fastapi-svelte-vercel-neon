@@ -1,7 +1,6 @@
 import json
 import os
 import pathlib
-import logging
 from database import Base, engine, get_session
 from fastapi import Depends, FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
@@ -17,12 +16,6 @@ try:
 except ImportError:
     StaticFiles = None
 
-
-# Configure logging for Vercel compatibility
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 
 app = FastAPI(title="FastAPI Svelte Vercel Neon", version="1.0.0")
 
@@ -41,7 +34,7 @@ if os.getenv("VERCEL") != "1" and StaticFiles is not None:  # Only mount static 
     try:
         app.mount("/static", StaticFiles(directory="svelte/dist"), name="static")
     except Exception as e:
-        logging.warning(f"Could not mount static files: {e}")
+        print(f"Failed to mount static files: {e}")
 
 # For serverless, we need to load manifest lazily
 def get_manifest():
@@ -53,22 +46,14 @@ def get_manifest():
 
 templates = Jinja2Templates(directory="templates")
 
-# Create tables on startup - with Vercel-safe error handling
+# Create tables on startup
 @app.on_event("startup")
 async def startup():
     try:
-        # Only create tables if not on Vercel or if explicitly requested
-        if os.getenv("CREATE_TABLES", "true").lower() == "true":
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
-            logging.info("Database tables created successfully")
-        else:
-            logging.info("Skipping table creation (disabled via environment)")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
     except Exception as e:
-        logging.error(f"Failed to create database tables: {e}")
-        # Don't raise on Vercel to prevent startup failures
-        if os.getenv("VERCEL") != "1":
-            raise
+        raise e
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, db: AsyncSession = Depends(get_session)):
@@ -93,7 +78,6 @@ async def home(request: Request, db: AsyncSession = Depends(get_session)):
         })
     except Exception as e:
         # Log the error and return a fallback response
-        logging.error(f"Error in home route: {e}")
         await db.rollback()
         props = {"heading": "FastAPI Svelte Vercel Neon - Error Fallback"}
         manifest = get_manifest()
@@ -124,7 +108,6 @@ async def init_data(db: AsyncSession = Depends(get_session)):
             return {"message": "Index page already exists"}
     except Exception as e:
         await db.rollback()
-        logging.error(f"Failed to initialize data: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to initialize data: {str(e)}")
 
 @app.get("/health")
@@ -140,7 +123,6 @@ async def get_pages(db: AsyncSession = Depends(get_session)):
         pages = result.scalars().all()
         return [{"id": page.id, "name": page.name, "title": page.title} for page in pages]
     except Exception as e:
-        logging.error(f"Error fetching pages: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch pages")
 
 # Vercel will automatically detect and use the FastAPI app
