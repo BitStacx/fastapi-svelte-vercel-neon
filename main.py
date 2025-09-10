@@ -30,7 +30,7 @@ app.add_middleware(
 
 # Mount static files for local development
 # This will be handled by Vercel routes in production
-if os.getenv("VERCEL") != "1" and StaticFiles is not None:  # Only mount static files when not on Vercel
+if os.getenv("DEBUG") and StaticFiles is not None:  # Only mount static files when not on Vercel
     try:
         app.mount("/static", StaticFiles(directory="svelte/dist"), name="static")
     except Exception as e:
