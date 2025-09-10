@@ -85,14 +85,4 @@ async def init_data(db: AsyncSession = Depends(get_session)):
     except Exception as e:
         await db.rollback()
         return {"error": f"Failed to initialize data: {str(e)}"}
-
-# ============================================
-# VERCEL SERVERLESS HANDLER - CRITICAL!
-# ============================================
-# For Vercel deployment - the app instance is automatically detected
-# No need for additional handler when using @vercel/python
-
-# For local development
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    
