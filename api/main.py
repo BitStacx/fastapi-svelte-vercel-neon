@@ -20,8 +20,8 @@ def get_manifest():
             return json.load(f)
     return {"src/index.js": {"file": "index.js", "css": []}}
 
-# Mount /static -> ./static folder (Note: may not work in Vercel serverless)
-app.mount("/static", StaticFiles(directory="svelte/dist"), name="static")
+# Remove static files mounting for Vercel (handled by routes)
+# app.mount("/static", StaticFiles(directory="svelte/dist"), name="static")
 
 templates = Jinja2Templates(directory="templates")
 
@@ -85,4 +85,7 @@ async def init_data(db: AsyncSession = Depends(get_session)):
     except Exception as e:
         await db.rollback()
         return {"error": f"Failed to initialize data: {str(e)}"}
+
+# Add handler for Vercel
+handler = app
     
