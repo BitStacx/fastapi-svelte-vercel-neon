@@ -1,9 +1,43 @@
 {
   "version": 2,
   "builds": [
-    { "src": "main.py", "use": "@vercel/python" }
+    {
+      "src": "main.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "svelte/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
   ],
   "routes": [
-    { "src": "/(.*)", "dest": "main.py" }
-  ]
+    {
+      "src": "/static/(.*)",
+      "dest": "/svelte/dist/$1"
+    },
+    {
+      "src": "/(.*\\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot))",
+      "dest": "/svelte/dist/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/main.py"
+    }
+  ],
+  "env": {
+    "POSTGRES_URL": "@postgres_url"
+  },
+  "build": {
+    "env": {
+      "POSTGRES_URL": "@postgres_url"
+    }
+  },
+  "functions": {
+    "main.py": {
+      "maxDuration": 10
+    }
+  }
 }
