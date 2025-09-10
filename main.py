@@ -12,12 +12,16 @@ from sqlalchemy.future import select
 
 app = FastAPI()
 
-# Mount /static -> ./static folder
-app.mount("/static", StaticFiles(directory="svelte/dist"), name="static")
+# For serverless, we need to load manifest lazily
+def get_manifest():
+    manifest_path = pathlib.Path("svelte/dist/.vite/manifest.json")
+    if manifest_path.exists():
+        with open(manifest_path) as f:
+            return json.load(f)
+    return {"src/index.js": {"file": "index.js", "css": []}}
 
-manifest_path = pathlib.Path("svelte/dist/.vite/manifest.json")
-with open(manifest_path) as f:
-    manifest = json.load(f)
+# Mount /static -> ./static folder (Note: may not work in Vercel serverless)
+app.mount("/static", StaticFiles(directory="svelte/dist"), name="static")
 
 templates = Jinja2Templates(directory="templates")
 
@@ -39,6 +43,7 @@ async def home(request: Request, db: AsyncSession = Depends(get_session)):
         if page:
             props["heading"] = page.title
             
+        manifest = get_manifest()
         entry = manifest["src/index.js"]
         
         return templates.TemplateResponse("index.j2", {
@@ -51,6 +56,7 @@ async def home(request: Request, db: AsyncSession = Depends(get_session)):
         # Log the error and return a fallback response
         print(f"Error in home route: {e}")
         props = {"heading": "FastAPI Svelte Vercel Neon - Error Fallback"}
+        manifest = get_manifest()
         entry = manifest["src/index.js"]
         
         return templates.TemplateResponse("index.j2", {
@@ -79,3 +85,14 @@ async def init_data(db: AsyncSession = Depends(get_session)):
     except Exception as e:
         await db.rollback()
         return {"error": f"Failed to initialize data: {str(e)}"}
+
+# ============================================
+# VERCEL SERVERLESS HANDLER - CRITICAL!
+# ============================================
+# For Vercel deployment - the app instance is automatically detected
+# No need for additional handler when using @vercel/python
+
+# For local development
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

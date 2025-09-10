@@ -2,13 +2,6 @@
   "version": 2,
   "builds": [
     {
-      "src": "svelte/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    },
-    {
       "src": "main.py",
       "use": "@vercel/python"
     }
