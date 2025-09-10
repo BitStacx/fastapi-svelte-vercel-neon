@@ -1,17 +1,28 @@
 import json
 import os
 import pathlib
+import logging
 from database import Base, engine, get_session
 from fastapi import Depends, FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from models import Page
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-import logging
 
+# Import StaticFiles only for local development
+try:
+    from fastapi.staticfiles import StaticFiles
+except ImportError:
+    StaticFiles = None
+
+
+# Configure logging for Vercel compatibility
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 app = FastAPI(title="FastAPI Svelte Vercel Neon", version="1.0.0")
 
@@ -26,11 +37,11 @@ app.add_middleware(
 
 # Mount static files for local development
 # This will be handled by Vercel routes in production
-if os.getenv("VERCEL") != "1":  # Only mount static files when not on Vercel
-    app.mount("/static", StaticFiles(directory="svelte/dist"), name="static")
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+if os.getenv("VERCEL") != "1" and StaticFiles is not None:  # Only mount static files when not on Vercel
+    try:
+        app.mount("/static", StaticFiles(directory="svelte/dist"), name="static")
+    except Exception as e:
+        logging.warning(f"Could not mount static files: {e}")
 
 # For serverless, we need to load manifest lazily
 def get_manifest():
@@ -42,16 +53,22 @@ def get_manifest():
 
 templates = Jinja2Templates(directory="templates")
 
-# Create tables on startup
+# Create tables on startup - with Vercel-safe error handling
 @app.on_event("startup")
 async def startup():
     try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logging.info("Database tables created successfully")
+        # Only create tables if not on Vercel or if explicitly requested
+        if os.getenv("CREATE_TABLES", "true").lower() == "true":
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            logging.info("Database tables created successfully")
+        else:
+            logging.info("Skipping table creation (disabled via environment)")
     except Exception as e:
         logging.error(f"Failed to create database tables: {e}")
-        raise
+        # Don't raise on Vercel to prevent startup failures
+        if os.getenv("VERCEL") != "1":
+            raise
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, db: AsyncSession = Depends(get_session)):
@@ -126,6 +143,5 @@ async def get_pages(db: AsyncSession = Depends(get_session)):
         logging.error(f"Error fetching pages: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch pages")
 
-# Add handler for Vercel
-handler = app
+# Vercel will automatically detect and use the FastAPI app
     
