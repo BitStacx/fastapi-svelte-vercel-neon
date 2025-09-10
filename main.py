@@ -29,21 +29,53 @@ async def startup():
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, db: AsyncSession = Depends(get_session)):
-    
-    result = await db.execute(select(Page).where(Page.name == 'index'))
-    page = result.scalar_one_or_none()
-    
-    props = {}
-    props["heading"] = "FastAPI Svelte Vercel Neon - Hard Code"
-    
-    if page:
-        props["heading"] = page.title
+    try:
+        result = await db.execute(select(Page).where(Page.name == 'index'))
+        page = result.scalar_one_or_none()
         
-    entry = manifest["src/index.js"]
-    
-    return templates.TemplateResponse("index.j2", {
-        "request": request,
-        "title": props["heading"],
-        "props": props,
-        "bundle": entry,
-    })
+        props = {}
+        props["heading"] = "FastAPI Svelte Vercel Neon - Hard Code"
+        
+        if page:
+            props["heading"] = page.title
+            
+        entry = manifest["src/index.js"]
+        
+        return templates.TemplateResponse("index.j2", {
+            "request": request,
+            "title": props["heading"],
+            "props": props,
+            "bundle": entry,
+        })
+    except Exception as e:
+        # Log the error and return a fallback response
+        print(f"Error in home route: {e}")
+        props = {"heading": "FastAPI Svelte Vercel Neon - Error Fallback"}
+        entry = manifest["src/index.js"]
+        
+        return templates.TemplateResponse("index.j2", {
+            "request": request,
+            "title": props["heading"],
+            "props": props,
+            "bundle": entry,
+        })
+
+@app.post("/init-data")
+async def init_data(db: AsyncSession = Depends(get_session)):
+    """Initialize some sample data in the database"""
+    try:
+        # Check if index page already exists
+        result = await db.execute(select(Page).where(Page.name == 'index'))
+        existing_page = result.scalar_one_or_none()
+        
+        if not existing_page:
+            # Create an index page
+            index_page = Page(name="index", title="Welcome to FastAPI + Svelte + Neon!")
+            db.add(index_page)
+            await db.commit()
+            return {"message": "Index page created successfully"}
+        else:
+            return {"message": "Index page already exists"}
+    except Exception as e:
+        await db.rollback()
+        return {"error": f"Failed to initialize data: {str(e)}"}
