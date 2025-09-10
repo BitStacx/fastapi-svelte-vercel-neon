@@ -70,11 +70,15 @@ async def home(request: Request, db: AsyncSession = Depends(get_session)):
         manifest = get_manifest()
         entry = manifest["src/index.js"]
         
+        # Determine static file prefix based on environment
+        static_prefix = "" if os.getenv("VERCEL") == "1" else "/static/"
+        
         return templates.TemplateResponse("index.j2", {
             "request": request,
             "title": props["heading"],
             "props": props,
             "bundle": entry,
+            "static_prefix": static_prefix,
         })
     except Exception as e:
         # Log the error and return a fallback response
@@ -83,11 +87,15 @@ async def home(request: Request, db: AsyncSession = Depends(get_session)):
         manifest = get_manifest()
         entry = manifest["src/index.js"]
         
+        # Determine static file prefix based on environment
+        static_prefix = "" if os.getenv("VERCEL") == "1" else "/static/"
+        
         return templates.TemplateResponse("index.j2", {
             "request": request,
             "title": props["heading"],
             "props": props,
             "bundle": entry,
+            "static_prefix": static_prefix,
         })
 
 @app.post("/init-data")

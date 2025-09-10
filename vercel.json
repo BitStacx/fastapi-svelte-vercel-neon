@@ -1,15 +1,14 @@
 {
+  "buildCommand": "cd svelte && npm run build",
+  "outputDirectory": "svelte/dist",
+  "installCommand": "cd svelte && npm install",
   "builds": [
     {
-      "src": "/main.py",
+      "src": "main.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
-    {
-      "src": "/static/(.*)",
-      "dest": "/svelte/dist/$1"
-    },
     {
       "src": "/(.*)",
       "dest": "/main.py"

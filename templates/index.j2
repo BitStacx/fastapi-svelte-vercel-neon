@@ -15,7 +15,7 @@
 
         <!-- Svelte css bundled files  -->
         {% for css in bundle.get("css", []) %}
-            <link rel="stylesheet" href="/static/{{ css }}">
+            <link rel="stylesheet" href="{{ static_prefix }}{{ css }}">
         {% endfor %}
     </head>
     <body>
@@ -25,6 +25,6 @@
         </script>
 
         <!-- Svelte js bundle -->
-        <script type="module" src="/static/{{ bundle["file"] }}"></script>
+        <script type="module" src="{{ static_prefix }}{{ bundle["file"] }}"></script>
     </body>
 </html>
