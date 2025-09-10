@@ -1,8 +1,12 @@
 {
-  "buildCommand": "cd svelte && npm run build",
-  "outputDirectory": "svelte/dist",
-  "installCommand": "cd svelte && npm install",
   "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "svelte/dist"
+      }
+    },
     {
       "src": "main.py",
       "use": "@vercel/python"
@@ -11,11 +15,14 @@
   "routes": [
     {
       "src": "/assets/(.*)",
-      "dest": "/assets/$1"
+      "dest": "/svelte/dist/assets/$1",
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
+      }
     },
     {
       "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico))",
-      "dest": "/$1"
+      "dest": "/svelte/dist/$1"
     },
     {
       "src": "/(.*)",
